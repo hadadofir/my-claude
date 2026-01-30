@@ -1,0 +1,45 @@
+gmail:
+  credentials_file: "credentials.json"
+  token_file: "token.json"
+  scopes:
+    - "https://www.googleapis.com/auth/gmail.modify"
+    - "https://www.googleapis.com/auth/gmail.readonly"
+
+schedule:
+  cleanup: "daily at 02:00"
+  organize: "every 6 hours"
+  backup: "daily at 03:00"
+  unsubscribe_scan: "weekly on monday"
+
+cleanup:
+  delete_older_than_days: 90000
+  empty_spam: true
+  empty_trash: true
+  sender_blacklist:
+    - "noreply@spam.com"
+
+organize:
+  rules:
+    - match:
+        from: "*@github.com"
+      label: "Dev/GitHub"
+    - match:
+        from: "*@linkedin.com"
+      label: "Social/LinkedIn"
+    - match:
+        subject: "invoice"
+      label: "Finance/Invoices"
+
+backup:
+  database_path: "data/mail_backup.db"
+  include_attachments: false
+
+unsubscribe:
+  auto_unsubscribe: false
+  report_path: "data/unsubscribe_report.txt"
+
+logging:
+  level: "INFO"
+  file: "logs/mail_maint.log"
+  max_size_mb: 10
+  backup_count: 5

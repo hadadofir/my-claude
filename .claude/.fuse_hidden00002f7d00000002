@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(whatsapp)",
+      "Bash(npx ts-node:*)",
+      "Bash(powershell.exe -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; Get-ChildItem ''C:\\\\Program Files\\\\nodejs'' -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem ''C:\\\\Users\\\\Inbar\\\\AppData\\\\Roaming\\\\npm'' -ErrorAction SilentlyContinue | Select-Object Name\")",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\Inbar\\\\.claude\\\\skills\\\\whatsapp\\\\scripts\\\\run-test.ps1\")",
+      "Bash(powershell.exe -NoProfile -Command '$env:PATH = \"\"C:\\\\Program Files\\\\nodejs;\"\" + $env:PATH; $url = \"\"https://7105.api.greenapi.com/waInstance7105482087/getStateInstance/7bea82224467480f969a4c1aa71a28a0cc315b871e2a4599aa\"\"; Invoke-RestMethod -Uri $url -Method GET')",
+      "Bash(powershell.exe -NoProfile -Command '$env:PATH = \"\"C:\\\\Program Files\\\\nodejs;\"\" + $env:PATH; Set-Location \"\"C:\\\\Users\\\\Inbar\\\\.claude\\\\skills\\\\whatsapp\\\\scripts\"\"; npx ts-node send-message.ts --phone \"\"972526662836\"\" --message \"\"BEEP BOOP! This is your friendly AI checking in from the command line dimension! The digital carrier pigeons have successfully delivered your message through the matrix! May your code compile on first try and your coffee never go cold! Over and out!\"\"')",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(python -m src.main:*)"
+    ]
+  }
+}

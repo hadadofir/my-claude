@@ -1,0 +1,12 @@
+[0;1;32m●[0m chrome-remote-desktop@ofir-hadad.service - Chrome Remote Desktop instance for ofir-hadad
+     Loaded: loaded (]8;;file://ofir-hadad-UX410UAK/usr/lib/systemd/system/chrome-remote-desktop@.service/usr/lib/systemd/system/chrome-remote-desktop@.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Tue 2026-01-27 19:40:09 IST; 26s ago
+   Main PID: 60526 (chrome-remote-d)
+      Tasks: 0 (limit: 9168)
+     Memory: 536.0K (peak: 872.0K)
+        CPU: 4ms
+     CGroup: /system.slice/system-chrome\x2dremote\x2ddesktop.slice/chrome-remote-desktop@ofir-hadad.service
+             ‣ 60526 /usr/bin/python3 /opt/google/chrome-remote-desktop/chrome-remote-desktop --child-process --config=/home/ofir-hadad/.config/chrome-remote-desktop/host#363cfbc8fe15e6aaac40cc2f6b7c85a1.json --start
+
+Jan 27 19:40:09 ofir-hadad-UX410UAK systemd[1]: Started chrome-remote-desktop@ofir-hadad.service - Chrome Remote Desktop instance for ofir-hadad.
+Jan 27 19:40:09 ofir-hadad-UX410UAK (-desktop)[60526]: pam_unix(chrome-remote-desktop:session): session opened for user ofir-hadad(uid=1000) by (uid=0)
