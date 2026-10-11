@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env*.example
+venv/
+__pycache__/
+fitness_workspace/fitness.db
+fitness_workspace/state.json
+fitness_workspace/.garmin_tokens/
+fitness_workspace/incoming/
+fitness_workspace/calibration/
+pregnancy_workspace/incoming/
+fitness_workspace/reports/
