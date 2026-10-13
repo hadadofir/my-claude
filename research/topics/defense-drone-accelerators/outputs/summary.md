@@ -3,6 +3,8 @@
 > Identifying disruptive accelerator chip opportunities for defense drones
 
 **Generated**: 2026-01-25
+**Last Updated**: 2026-05-07
+**Re-verified**: 2026-07-01 — core thesis holds; see validity addenda in `neuromorphic_vs_ann_vio_deep_dive.md` and `competitive_deep_dive_v3.md` (one Loihi 3 date correction, one new adjacent competitor "HYFIX", one new supporting data point "TinyDEVO")
 **Confidence**: MEDIUM (revised after critical review)
 **Sources**: 25+ sources consulted
 
@@ -30,6 +32,9 @@
 | Key players | Anduril ($2.5B), Shield AI ($5.6B val), Helsing (€12B val) |
 | DARPA OPTIMA program | $78M for compute-in-memory accelerators |
 | Typical drone power budget | 100-200W total for all electronics |
+| GPS-denied navigation market (2026) | $163.1M → $334.2M by 2033 (9.4% CAGR) |
+| US Army Red Dragon contract (Apr 2026) | $17.6M; 400km autonomous strike without GPS |
+| Pentagon counter-drone budget | $3.1B allocated |
 
 ---
 

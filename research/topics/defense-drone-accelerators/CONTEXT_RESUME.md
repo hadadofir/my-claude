@@ -1,6 +1,6 @@
 # Context Resume File
 
-**Last Updated**: 2026-01-27 (session 2)
+**Last Updated**: 2026-05-07 (session 3)
 **Purpose**: Resume research session after break
 
 ---
@@ -35,7 +35,7 @@ More conservative, faster to market, but less differentiated.
 
 ## Completed Outputs
 
-All in `/media/external/Ofir/sandbox/research/topics/defense-drone-accelerators/outputs/`:
+All in `outputs/`:
 
 | File | Content |
 |------|---------|
@@ -46,11 +46,14 @@ All in `/media/external/Ofir/sandbox/research/topics/defense-drone-accelerators/
 | `prototype_planning.md` | FPGA boards, event cameras, dev setup, budget |
 | `competitive_deep_dive.md` | SynSense vs BrainChip vs Intel Loihi detailed comparison |
 | `competitive_deep_dive_v2.md` | Updated competitive analysis (Jan 2026) - neuromorphic + non-neuromorphic + new entrants |
+| `competitive_deep_dive_v3.md` | **Latest** competitive analysis (May 2026) - Q1-Q2 2026 updates, BrainChip AKD1500, Loihi 3 commercialization, defense market validation |
+| `neuromorphic_vs_ann_vio_deep_dive.md` | Deep dive: SNN vs conventional NNs vs classical for VIO — computation models, MAC counts, hardware mapping, training comparison |
+| `snn_mathematics_and_demo.md` | **New** SNN from scratch: LIF math, surrogate gradients, BPTT, working demo code (N-MNIST + DVS Gesture), KV260 deployment path |
 | `fpga_board_selection.md` | Detailed FPGA board comparison with purchase plan |
 
 ## Source Materials
 
-In `/media/external/Ofir/sandbox/research/topics/defense-drone-accelerators/sources/`:
+In `sources/`:
 
 | File | Content |
 |------|---------|
@@ -147,6 +150,28 @@ If continuing research:
 - K26 SOM standalone: ~$406 commercial, ~$562 industrial
 - **Total prototype cost: ~$800-1,300** (KV260 + Prophesee kit + IMU)
 - PolarFire SoC is secondary option for defense/security production (flash-based, RISC-V, secure)
+
+---
+
+## Session 3 Key Findings (2026-05-07)
+
+### Competitive Update (competitive_deep_dive_v3.md)
+- **BrainChip AKD1500 confirmed**: Unveiled at Embedded World NA. 800 GOPS at <300mW on GF 22FDX. Volume production Q3 2026. But still wrong architecture for VIO — their defense play is counter-drone radar classification, not navigation.
+- **Intel Loihi 3 commercializing Q3 2026**: Targets healthcare, autonomous vehicles, industrial. NOT going after drone VIO. Validates neuromorphic crossing from lab to product.
+- **Prophesee new CEO (Jean Ferré)**: 30+ years in defense/aerospace. Signals Prophesee pushing hard into defense. Reinforces partnership opportunity — they need compute for their sensors.
+- **SynSense Kumrah AI JV**: Aerospace/industrial neuromorphic vision JV (May 2025, post-v2 cutoff). Still low-res, no HD VIO timeline.
+- **Hailo at XPONENTIAL 2026 (May 2026)**: Drone companion computers with detection/inference. Still no VIO backend.
+- **MIT Navion**: Still unspinoff'd — confirmed May 2026.
+- **No new VIO entrants**: Gap remains wide open.
+
+### Defense Market Validation (Major)
+- **GPS-denied navigation market**: $163.1M in 2026 → $334.2M by 2033 (9.4% CAGR)
+- **US Army Red Dragon contract**: $17.6M for autonomous strike drone with 400km GPS-denied range (April 2026)
+- **Pentagon counter-drone**: $3.1B allocated — demand on both sides (GPS-denied offense + counter-drone defense)
+- GPS-denied capability shifting from optional to **baseline requirement** due to Ukraine/Middle East lessons
+
+### Updated Priority Contacts
+- **Prophesee (Jean Ferré, new CEO)**: Best near-term outreach. Defense background means accessible conversation. They need a compute partner.
 
 ---
 

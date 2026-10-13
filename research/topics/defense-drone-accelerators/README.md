@@ -4,7 +4,7 @@
 
 **Status**: In Progress
 **Started**: 2026-01-25
-**Last Updated**: 2026-01-25
+**Last Updated**: 2026-05-07
 **Tags**: #technical #deep-dive #hardware #defense #drones
 
 ---
@@ -65,10 +65,15 @@ Specific accelerator chip concept(s) with:
 
 ## Outputs
 
-- [Summary](./outputs/summary.md) - Overall research findings
+- [Summary](./outputs/summary.md) - Overall research findings (updated May 2026)
 - [Neuromorphic VIO Deep Dive](./outputs/neuromorphic_vio_deep_dive.md) - Event cameras + SNN architecture
 - [VIO/SLAM Technical Architecture](./outputs/vio_slam_technical_architecture.md) - RTL block breakdown
 - [Customer Landscape](./outputs/customer_landscape.md) - ModalAI, Skydio, Flyability, Shield AI profiles
+- [Competitive Deep Dive v3](./outputs/competitive_deep_dive_v3.md) - **Latest**: Q1-Q2 2026 (May 2026)
+- [Competitive Deep Dive v2](./outputs/competitive_deep_dive_v2.md) - Jan 2026 analysis
+- [Neuromorphic vs ANN VIO Deep Dive](./outputs/neuromorphic_vs_ann_vio_deep_dive.md) - SNN vs deep learning vs classical — computation models, MAC counts, hardware fit
+- [SNN Mathematics and Demo](./outputs/snn_mathematics_and_demo.md) - **New**: LIF math, surrogate gradients, working demo code, KV260 deployment
+- [FPGA Board Selection](./outputs/fpga_board_selection.md) - KV260 selection + prototype plan
 
 ## Sources
 
