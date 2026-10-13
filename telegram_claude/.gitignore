@@ -10,3 +10,8 @@ fitness_workspace/incoming/
 fitness_workspace/calibration/
 pregnancy_workspace/incoming/
 fitness_workspace/reports/
+sessions_claude.json
+sessions_pregnancy.json
+*.json.tmp
+fitness_workspace/fitness.db-shm
+fitness_workspace/fitness.db-wal

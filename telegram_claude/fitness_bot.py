@@ -17,6 +17,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, Messa
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env.fitness"))
 
 import fitness_charts  # noqa: E402
+from tg_format import send_with  # noqa: E402
 import fitness_db as db  # noqa: E402  (needs TZ from the env file)
 import garmin_sync  # noqa: E402
 
@@ -38,6 +39,7 @@ STATE_FILE = os.path.join(WORKING_DIR, "state.json")
 # allowed in fitness_workspace/.claude/settings.json.
 ALLOWED_TOOLS = "Read,WebSearch,WebFetch"
 PERMISSION_MODE = "dontAsk"
+CLAUDE_TIMEOUT = int(os.environ.get("FITNESS_CLAUDE_TIMEOUT", "900"))
 
 SYNC_TIMES = [dtime(10, 0, tzinfo=db.TZ), dtime(21, 30, tzinfo=db.TZ)]
 REPORT_TIME = dtime(22, 0, tzinfo=db.TZ)
@@ -105,7 +107,10 @@ or ~1500 kcal for an adult man without a professional's supervision.
 
 STYLE: English, short and scannable for a phone. Plain text with simple bullets/emoji is fine; no \
 markdown tables or headers. Lead with numbers, end with one or two concrete actions (e.g. specific foods \
-to close a protein gap). Don't repeat the whole day's log unless asked."""
+to close a protein gap). Don't repeat the whole day's log unless asked.
+
+Formatting: replies are shown in Telegram, which has no tables or headings. Use short lines and bullet
+lists, 'label: value' lines instead of tables, **bold** sparingly. Markdown is converted for you."""
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
@@ -183,7 +188,7 @@ def dynamic_context() -> str:
     return "\n".join(lines)
 
 
-def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
+def run_claude(prompt: str, session_id: str | None, timeout: int = CLAUDE_TIMEOUT) -> tuple[str, str | None]:
     cmd = [
         CLAUDE_BIN, "--print", "--output-format", "json",
         "--tools", ALLOWED_TOOLS,
@@ -198,12 +203,12 @@ def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
     cmd.append(prompt)
 
     try:
-        result = subprocess.run(cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=timeout)
         data = json.loads(result.stdout)
         text = data.get("result") or result.stderr.strip() or "(no output)"
         return text, data.get("session_id")
     except subprocess.TimeoutExpired:
-        return "That took too long (>5 min). Try again.", session_id
+        return f"That took too long (>{timeout // 60} min). The conversation is kept — say \"continue\" to pick up.", session_id
     except (json.JSONDecodeError, KeyError):
         output = result.stdout.strip() or result.stderr.strip() or "(no output)"
         return output, session_id
@@ -211,10 +216,18 @@ def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
         return f"Error: {e}", session_id
 
 
-async def ask_claude(prompt: str) -> str:
+async def ask_claude(prompt: str, status_msg=None) -> str:
     async with claude_lock:
         session_id = current_session()
-        output, new_session_id = await asyncio.to_thread(run_claude, prompt, session_id)
+        task = asyncio.create_task(asyncio.to_thread(run_claude, prompt, session_id))
+        start = time.monotonic()
+        while not (await asyncio.wait({task}, timeout=60))[0]:
+            if status_msg:
+                try:
+                    await status_msg.edit_text(f"Still working… {int((time.monotonic() - start) // 60)} min")
+                except Exception:
+                    pass
+        output, new_session_id = task.result()
         if new_session_id and new_session_id != session_id:
             set_session(new_session_id)
             log.info("Session for %s: %s", db.today(), new_session_id)
@@ -222,8 +235,7 @@ async def ask_claude(prompt: str) -> str:
 
 
 async def send_text(bot, text: str) -> None:
-    for i in range(0, max(len(text), 1), 4096):
-        await bot.send_message(ALLOWED_USER_ID, text[i:i + 4096])
+    await send_with(lambda chunk, **kw: bot.send_message(ALLOWED_USER_ID, chunk, **kw), text)
 
 
 async def render(kind: str) -> str:
@@ -247,7 +259,7 @@ async def ask_and_reply(update: Update, context: ContextTypes.DEFAULT_TYPE, prom
                         status: str = "…") -> None:
     msg = await update.effective_message.reply_text(status)
     try:
-        output = await ask_claude(prompt)
+        output = await ask_claude(prompt, msg)
     finally:
         await msg.delete()
     await send_text(context.bot, output)

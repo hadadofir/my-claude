@@ -1,12 +1,16 @@
 #!/home/ofir-hadad/Desktop/Ofir/sandbox/telegram_claude/venv/bin/python3
+import asyncio
 import json
 import os
+import time
 import uuid
 import logging
 from dotenv import load_dotenv
 from secret_store import child_env, get_secret
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+from session_store import SUMMARY_PROMPT, SessionStore, seeded_prompt
+from tg_format import send_formatted
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env.pregnancy"))
 
@@ -25,6 +29,8 @@ INCOMING_DIR = os.path.join(WORKING_DIR, "incoming")
 # instead of hanging on a permission prompt nobody's there to answer.
 ALLOWED_TOOLS = "Read,WebSearch,WebFetch"
 PERMISSION_MODE = "dontAsk"
+CLAUDE_TIMEOUT = int(os.environ.get("PREGNANCY_CLAUDE_TIMEOUT", "900"))
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions_pregnancy.json")
 
 PREGNANCY_CONTEXT = (
     "את עוזרת מידע בנושא תזונה ובטיחות מזון בהריון, פועלת כבוט טלגרם פרטי עבור "
@@ -51,7 +57,9 @@ PREGNANCY_CONTEXT = (
     "להתייעצות עם הרופא/ה המטפל/ת או המיילדת.\n"
     "7. תשובות תמציתיות וברורות, מותאמות לקריאה בטלפון.\n"
     "8. אין יכולת ואין תפקיד לבצע פעולות מחשוב/קבצים/מערכת - זהו כלי מידע "
-    "בלבד. אם מתבקש משהו כזה, יש להסביר שזה לא בתפקיד הבוט."
+    "בלבד. אם מתבקש משהו כזה, יש להסביר שזה לא בתפקיד הבוט.\n\n"
+    "עיצוב: התשובות מוצגות בטלגרם, שאין בו טבלאות או כותרות. יש להעדיף פסקאות קצרות "
+    "ורשימות עם תבליטים, שורות 'נושא: ערך' במקום טבלאות, ו-**הדגשה** במשורה."
 )
 
 logging.basicConfig(
@@ -63,8 +71,9 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-# telegram_user_id -> claude session_id
-sessions: dict[int, str] = {}
+# telegram_user_id -> claude session (persisted, rolled over when too big/idle)
+store = SessionStore(STATE_FILE)
+user_locks: dict[int, asyncio.Lock] = {}
 
 
 def is_authorized(update: Update) -> bool:
@@ -75,7 +84,7 @@ def is_authorized(update: Update) -> bool:
     return True
 
 
-def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
+def run_claude(prompt: str, session_id: str | None, timeout: int = CLAUDE_TIMEOUT) -> tuple[str, str | None]:
     import subprocess
 
     cmd = [
@@ -90,14 +99,14 @@ def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
 
     try:
         result = subprocess.run(
-            cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=300
+            cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=timeout
         )
         data = json.loads(result.stdout)
         text = data.get("result") or result.stderr.strip() or "(אין תשובה)"
         new_session_id = data.get("session_id")
         return text, new_session_id
     except subprocess.TimeoutExpired:
-        return "הבקשה ארכה יותר מדי זמן (מעל 5 דקות).", session_id
+        return f"הבקשה ארכה יותר מדי זמן (מעל {timeout // 60} דקות). השיחה נשמרה – אפשר לכתוב \"המשך\".", session_id
     except (json.JSONDecodeError, KeyError):
         output = result.stdout.strip() or result.stderr.strip() or "(אין תשובה)"
         return output, session_id
@@ -105,19 +114,32 @@ def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
         return f"שגיאה: {e}", session_id
 
 
-async def send_chunked(update: Update, text: str):
-    for i in range(0, max(len(text), 1), 4096):
-        await update.message.reply_text(text[i:i + 4096])
+async def ask_claude(update: Update, status_msg, prompt: str) -> str:
+    """Run Claude for this user in a worker thread: one request at a time per user,
+    roll over oversized/idle sessions with a summary, and show progress."""
+    uid = update.effective_user.id
+    async with user_locks.setdefault(uid, asyncio.Lock()):
+        session_id = store.get(uid)
+        if store.rollover_reason(uid):
+            await status_msg.edit_text("🔄 השיחה התארכה – מסכמת ופותחת שיחה חדשה…")
+            summary, _ = await asyncio.to_thread(run_claude, SUMMARY_PROMPT, session_id, 300)
+            log.info("Rollover for user %s from %s", uid, session_id)
+            prompt, session_id = seeded_prompt(summary, prompt), None
+            await update.message.reply_text("🔄 התחלתי שיחה חדשה עם סיכום של הקודמת.")
 
-
-def _ask_claude_and_reply_sync(prompt: str, uid: int) -> str:
-    session_id = sessions.get(uid)
-    output, new_session_id = run_claude(prompt, session_id)
-    if new_session_id:
-        sessions[uid] = new_session_id
-        if not session_id:
-            log.info("New session started for user %s: %s", uid, new_session_id)
-    return output
+        task = asyncio.create_task(asyncio.to_thread(run_claude, prompt, session_id))
+        start = time.monotonic()
+        while not (await asyncio.wait({task}, timeout=60))[0]:
+            try:
+                await status_msg.edit_text(f"עדיין בודקת… {int((time.monotonic() - start) // 60)} דק׳")
+            except Exception:
+                pass
+        output, new_session_id = task.result()
+        if new_session_id:
+            store.set(uid, new_session_id)
+            if not session_id:
+                log.info("New session started for user %s: %s", uid, new_session_id)
+        return output
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -128,18 +150,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not prompt:
         return
 
-    uid = update.effective_user.id
     thinking = await update.message.reply_text("בודקת...")
-    output = _ask_claude_and_reply_sync(prompt, uid)
+    output = await ask_claude(update, thinking, prompt)
     await thinking.delete()
-    await send_chunked(update, output)
+    await send_formatted(update.message, output)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
 
-    uid = update.effective_user.id
     thinking = await update.message.reply_text("בודקת את התמונה...")
 
     os.makedirs(INCOMING_DIR, exist_ok=True)
@@ -158,7 +178,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     try:
-        output = _ask_claude_and_reply_sync(prompt, uid)
+        output = await ask_claude(update, thinking, prompt)
     finally:
         try:
             os.remove(photo_path)
@@ -166,14 +186,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
     await thinking.delete()
-    await send_chunked(update, output)
+    await send_formatted(update.message, output)
 
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
     uid = update.effective_user.id
-    sessions.pop(uid, None)
+    store.clear(uid)
     await update.message.reply_text("השיחה אופסה. מתחילים מחדש.")
 
 
@@ -202,7 +222,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
     app.add_handler(CommandHandler("help", help_cmd))

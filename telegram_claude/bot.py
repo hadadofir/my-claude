@@ -1,13 +1,17 @@
 #!/home/ofir-hadad/Desktop/Ofir/sandbox/telegram_claude/venv/bin/python3
+import asyncio
 import json
 import os
 import re
 import subprocess
 import logging
+import time
 from dotenv import load_dotenv
 from secret_store import child_env, get_secret
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+from session_store import SUMMARY_PROMPT, SessionStore, seeded_prompt
+from tg_format import send_formatted
 
 load_dotenv()
 
@@ -16,6 +20,8 @@ ALLOWED_USER_ID = int(os.environ["ALLOWED_USER_ID"])
 WORKING_DIR = os.environ.get("WORKING_DIR", "/home/ofir-hadad/Desktop/Ofir")
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "/home/ofir-hadad/.local/bin/claude")
 PERMISSION_MODE = os.environ.get("PERMISSION_MODE", "bypassPermissions")
+CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT", "1200"))
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions_claude.json")
 
 TELEGRAM_CONTEXT = (
     "You are running headless as the backend for a personal Telegram bot, not in an "
@@ -34,7 +40,10 @@ TELEGRAM_CONTEXT = (
     "`SEND_FILE: <absolute path>` — one such line per file, multiple allowed. The file "
     "must already exist on disk at that path. Don't wrap the line in backticks or add "
     "other text to it; the bot detects these lines, uploads the files, and removes the "
-    "lines from the visible reply."
+    "lines from the visible reply.\n\n"
+    "Formatting: replies are shown in Telegram, which has no tables or headings. Prefer "
+    "short paragraphs and bullet lists; write 'label: value' lines instead of tables; "
+    "use **bold** sparingly and `code` for paths/IDs. Markdown is converted for you."
 )
 
 SEND_FILE_RE = re.compile(r"^SEND_FILE:\s*(.+)$", re.MULTILINE)
@@ -48,8 +57,9 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-# telegram_user_id -> claude session_id
-sessions: dict[int, str] = {}
+# telegram_user_id -> claude session (persisted, rolled over when too big/idle)
+store = SessionStore(STATE_FILE)
+user_locks: dict[int, asyncio.Lock] = {}
 
 
 def is_authorized(update: Update) -> bool:
@@ -60,7 +70,7 @@ def is_authorized(update: Update) -> bool:
     return True
 
 
-def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
+def run_claude(prompt: str, session_id: str | None, timeout: int = CLAUDE_TIMEOUT) -> tuple[str, str | None]:
     cmd = [CLAUDE_BIN, "--print", "--output-format", "json",
            "--permission-mode", PERMISSION_MODE,
            "--append-system-prompt", TELEGRAM_CONTEXT]
@@ -70,24 +80,19 @@ def run_claude(prompt: str, session_id: str | None) -> tuple[str, str | None]:
 
     try:
         result = subprocess.run(
-            cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=300
+            cmd, cwd=WORKING_DIR, env=child_env(), capture_output=True, text=True, timeout=timeout
         )
         data = json.loads(result.stdout)
         text = data.get("result") or result.stderr.strip() or "(no output)"
         new_session_id = data.get("session_id")
         return text, new_session_id
     except subprocess.TimeoutExpired:
-        return "Request timed out (>5 min).", session_id
+        return f"Request timed out (>{timeout // 60} min). The conversation is kept — send \"continue\" to pick up.", session_id
     except (json.JSONDecodeError, KeyError):
         output = result.stdout.strip() or result.stderr.strip() or "(no output)"
         return output, session_id
     except Exception as e:
         return f"Error: {e}", session_id
-
-
-async def send_chunked(update: Update, text: str):
-    for i in range(0, max(len(text), 1), 4096):
-        await update.message.reply_text(text[i:i + 4096])
 
 
 async def send_attached_files(update: Update, text: str) -> str:
@@ -105,6 +110,20 @@ async def send_attached_files(update: Update, text: str) -> str:
     return SEND_FILE_RE.sub("", text).strip()
 
 
+async def run_with_progress(status_msg, prompt: str, session_id: str | None):
+    """Run Claude in a worker thread, editing the status message every minute."""
+    task = asyncio.create_task(asyncio.to_thread(run_claude, prompt, session_id))
+    start = time.monotonic()
+    while True:
+        done, _ = await asyncio.wait({task}, timeout=60)
+        if done:
+            return task.result()
+        try:
+            await status_msg.edit_text(f"Still working… {int((time.monotonic() - start) // 60)} min")
+        except Exception:
+            pass
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
@@ -114,27 +133,72 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     uid = update.effective_user.id
-    thinking = await update.message.reply_text("Thinking...")
+    lock = user_locks.setdefault(uid, asyncio.Lock())
+    if lock.locked():
+        await update.message.reply_text("⏳ Queued — I'll handle this after the current request.")
+    async with lock:
+        thinking = await update.message.reply_text("Thinking...")
+        session_id = store.get(uid)
 
-    session_id = sessions.get(uid)
-    output, new_session_id = run_claude(prompt, session_id)
+        reason = store.rollover_reason(uid)
+        if reason:
+            await thinking.edit_text("🔄 Conversation got long — summarizing it into a fresh session…")
+            summary, _ = await asyncio.to_thread(run_claude, SUMMARY_PROMPT, session_id, 300)
+            log.info("Rollover (%s) for user %s from %s", reason, uid, session_id)
+            prompt = seeded_prompt(summary, prompt)
+            session_id = None
+            await update.message.reply_text("🔄 Started a new conversation with a summary of the previous one.")
 
-    if new_session_id:
-        sessions[uid] = new_session_id
-        if not session_id:
-            log.info("New session started for user %s: %s", uid, new_session_id)
+        output, new_session_id = await run_with_progress(thinking, prompt, session_id)
 
-    await thinking.delete()
-    output = await send_attached_files(update, output)
-    if output:
-        await send_chunked(update, output)
+        if new_session_id:
+            store.set(uid, new_session_id)
+            if not session_id:
+                log.info("New session started for user %s: %s", uid, new_session_id)
+
+        await thinking.delete()
+        output = await send_attached_files(update, output)
+        if output:
+            await send_formatted(update.message, output)
+
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_authorized(update):
+        return
+    st = store.status(update.effective_user.id)
+    if not st["session_id"]:
+        await update.message.reply_text("No active conversation.")
+        return
+    await update.message.reply_text(
+        f"Session: {st['session_id'][:8]}…\nSize: {st['size_mb']} MB (rolls over at "
+        f"{store.max_bytes / 1e6:g} MB)\nAge: {st['age_h']} h · idle {st['idle_min']} min"
+    )
+
+
+async def new_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start fresh but carry a summary of the current conversation."""
+    if not is_authorized(update):
+        return
+    uid = update.effective_user.id
+    session_id = store.get(uid)
+    if not session_id:
+        await update.message.reply_text("No active conversation — just send a message.")
+        return
+    async with user_locks.setdefault(uid, asyncio.Lock()):
+        msg = await update.message.reply_text("Summarizing the current conversation…")
+        summary, _ = await asyncio.to_thread(run_claude, SUMMARY_PROMPT, session_id, 300)
+        output, new_session_id = await asyncio.to_thread(
+            run_claude, seeded_prompt(summary, "Reply only: ready."), None, 300)
+        if new_session_id:
+            store.set(uid, new_session_id)
+        await msg.edit_text("🔄 New conversation started with a summary of the previous one.")
 
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
     uid = update.effective_user.id
-    sessions.pop(uid, None)
+    store.clear(uid)
     await update.message.reply_text("Conversation reset. Starting fresh.")
 
 
@@ -154,16 +218,20 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(
         "/start — show status\n"
-        "/reset — clear conversation history\n"
+        "/status — conversation size and age\n"
+        "/new — fresh conversation, keeping a summary\n"
+        "/reset — clear conversation history (no summary)\n"
         "/help — show this message\n\n"
         "Any other message is sent directly to Claude Code."
     )
 
 
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).concurrent_updates(True).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reset", reset))
+    app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("new", new_conversation))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     log.info("Bot started. Working dir: %s", WORKING_DIR)
