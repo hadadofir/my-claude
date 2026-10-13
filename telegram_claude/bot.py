@@ -206,7 +206,7 @@ async def new_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tasks_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
-    await send_formatted(update.message, format_tasks())
+    await send_formatted(update.message, format_tasks(" ".join(context.args)))
 
 
 async def weekly_review(context: ContextTypes.DEFAULT_TYPE):
@@ -241,7 +241,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/status — conversation size and age\n"
         "/new — fresh conversation, keeping a summary\n"
         "/reset — clear conversation history (no summary)\n"
-        "/tasks — open task list\n"
+        "/tasks — open task list (/tasks H for a section, /tasks H4 for one task)\n"
         "/help — show this message\n\n"
         "Any other message is sent directly to Claude Code."
     )
