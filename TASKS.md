@@ -40,6 +40,8 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
   - `~/.ha_token.ofir_old`
 - [ ] [H11] Fix presence, then restore who's-home badges — waiting: Claude · added 2026-10-13
   - removed from dashboard 10-13; backup home-main-before-remove-whos-home-2026-10-13.json
+- [ ] [H12] Integrate Dahua cameras (ONVIF) — waiting: Ofir · added 2026-10-13
+  - NVR at 10.0.0.5; need username/password, camera count, who can see them
 
 ## Bots
 - [ ] [B1] Voice messages in Claude bot — waiting: Ofir · added 2026-10-13
@@ -52,6 +54,7 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
   - ML/SNN/VIO algorithms person for the VIO accelerator
 
 ## Done
+- [x] Dashboard icons fixed (areas, boilers/heaters, alert badge names) — 2026-10-13
 - [x] [H10] Deleted old phone registrations (S901E, F936B, old S928B) — 2026-10-13
 - [x] [H3] Yossi uses SM-S928B; dead SM-F936B dropped from Shabbat + person — 2026-10-13
 - [x] [B2] Bot formatting and session rollover confirmed OK — 2026-10-13
