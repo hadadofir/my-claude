@@ -26,6 +26,7 @@ CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "/home/ofir-hadad/.local/bin/claude")
 PERMISSION_MODE = os.environ.get("PERMISSION_MODE", "bypassPermissions")
 CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT", "1200"))
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sessions_claude.json")
+INCOMING_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "incoming")
 
 TELEGRAM_CONTEXT = (
     "You are running headless as the backend for a personal Telegram bot, not in an "
@@ -136,11 +137,30 @@ async def run_with_progress(status_msg, prompt: str, session_id: str | None):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
-
     prompt = update.message.text.strip()
-    if not prompt:
-        return
+    if prompt:
+        await ask_claude(update, prompt)
 
+
+async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Save an incoming photo/document and hand its path to Claude with the caption."""
+    if not is_authorized(update):
+        return
+    msg = update.message
+    file_obj = msg.photo[-1] if msg.photo else msg.document
+    os.makedirs(INCOMING_DIR, exist_ok=True)
+    name = getattr(file_obj, "file_name", None) or "photo.jpg"
+    path = os.path.join(INCOMING_DIR, f"{int(time.time())}-{file_obj.file_unique_id}-{os.path.basename(name)}")
+    tg_file = await file_obj.get_file()
+    await tg_file.download_to_drive(path)
+    caption = (msg.caption or "").strip()
+    kind = "a photo" if msg.photo else "a file"
+    prompt = f"The user sent {kind}, saved at {path} (use Read to view it)."
+    prompt += f' Their caption: "{caption}"' if caption else " No caption — look at it and respond."
+    await ask_claude(update, prompt)
+
+
+async def ask_claude(update: Update, prompt: str):
     uid = update.effective_user.id
     lock = user_locks.setdefault(uid, asyncio.Lock())
     if lock.locked():
@@ -258,6 +278,7 @@ def main():
     # Weekly task review: Sunday 09:00 Israel time (days: 0=Sunday)
     app.job_queue.run_daily(weekly_review, datetime.time(9, 0, tzinfo=ZoneInfo("Asia/Jerusalem")), days=(0,))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, handle_file))
     log.info("Bot started. Working dir: %s", WORKING_DIR)
     app.run_polling()
 
