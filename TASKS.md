@@ -26,6 +26,7 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
   - Fri 2026-10-16: ask 13:51, decide 17:06
 - [ ] [H2] Ack-button test results — waiting: external · added 2026-10-12
   - resent 10-13 to Yossi, Orly, Elior; you get a ✅ per press; then delete `test_notify_ack`
+  - Yossi's app can't reach HA from outside (error on press); fix with his phone in hand
 - [ ] [H4] Find the iPhone causing HA bans — waiting: Ofir · added 2026-10-12
   - still failing 10-13 20:55 from cellular; likely Shaked or Idan (phones silent since 10-12)
   - fix: log out/in in the HA app; Yossi now connects OK
@@ -37,6 +38,8 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
 - [ ] [H8] Name phones in network list — waiting: Ofir · added 2026-10-12
 - [ ] [H9] Optional: revoke old HA token — waiting: Ofir · added 2026-10-12
   - `~/.ha_token.ofir_old`
+- [ ] [H11] Fix presence, then restore who's-home badges — waiting: Claude · added 2026-10-13
+  - removed from dashboard 10-13; backup home-main-before-remove-whos-home-2026-10-13.json
 
 ## Bots
 - [ ] [B1] Voice messages in Claude bot — waiting: Ofir · added 2026-10-13
