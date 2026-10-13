@@ -24,8 +24,8 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
 ## Home Assistant
 - [ ] [H1] Check Shabbat flow first live run — waiting: Claude · added 2026-10-12
   - Fri 2026-10-16: ask 13:51, decide 17:06
-- [ ] [H2] Ack-button test results — waiting: Ofir · added 2026-10-12
-  - nobody pressed (never triggered); decide: resend or delete `test_notify_ack`
+- [ ] [H2] Ack-button test results — waiting: external · added 2026-10-12
+  - resent 10-13 to Yossi, Orly, Elior; you get a ✅ per press; then delete `test_notify_ack`
 - [ ] [H4] Find the iPhone causing HA bans — waiting: Ofir · added 2026-10-12
   - still failing 10-13 20:55 from cellular; likely Shaked or Idan (phones silent since 10-12)
   - fix: log out/in in the HA app; Yossi now connects OK
@@ -37,8 +37,6 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
 - [ ] [H8] Name phones in network list — waiting: Ofir · added 2026-10-12
 - [ ] [H9] Optional: revoke old HA token — waiting: Ofir · added 2026-10-12
   - `~/.ha_token.ofir_old`
-- [ ] [H10] Delete dead phone registrations — waiting: Ofir · added 2026-10-13
-  - SM-F936B (Yossi old), disabled SM-S928B, SM-S901E (Ofir old phone)
 
 ## Bots
 - [ ] [B1] Voice messages in Claude bot — waiting: Ofir · added 2026-10-13
@@ -51,6 +49,7 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
   - ML/SNN/VIO algorithms person for the VIO accelerator
 
 ## Done
+- [x] [H10] Deleted old phone registrations (S901E, F936B, old S928B) — 2026-10-13
 - [x] [H3] Yossi uses SM-S928B; dead SM-F936B dropped from Shabbat + person — 2026-10-13
 - [x] [B2] Bot formatting and session rollover confirmed OK — 2026-10-13
 - [x] Directory cleanup: duplicates in `~/ofir` removed, sandbox merged and pushed, 4 skills installed — 2026-10-13
