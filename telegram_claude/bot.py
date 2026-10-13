@@ -50,7 +50,8 @@ TELEGRAM_CONTEXT = (
     "use **bold** sparingly and `code` for paths/IDs. Markdown is converted for you.\n\n"
     f"Task tracking: the user's master open-task list is {TASKS_FILE}. Read it before "
     "task-related requests. When a task is added, progressed or finished (including "
-    "\"add task …\" / \"close … task\" messages), update it in the file's format and "
+    "\"add task …\" / \"close H3\" messages), update it in the file's format "
+    "(each task has a stable ID like S2/H3/B1/P1; new tasks get the next unused number) and "
     "commit it in that git repo. The user can view it with /tasks."
 )
 
