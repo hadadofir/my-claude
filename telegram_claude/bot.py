@@ -6,12 +6,16 @@ import re
 import subprocess
 import logging
 import time
+import datetime
+import functools
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from secret_store import child_env, get_secret
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 from session_store import SUMMARY_PROMPT, SessionStore, seeded_prompt
-from tg_format import send_formatted
+from tg_format import send_formatted, send_with
+from tasks import TASKS_FILE, format_tasks
 
 load_dotenv()
 
@@ -43,7 +47,11 @@ TELEGRAM_CONTEXT = (
     "lines from the visible reply.\n\n"
     "Formatting: replies are shown in Telegram, which has no tables or headings. Prefer "
     "short paragraphs and bullet lists; write 'label: value' lines instead of tables; "
-    "use **bold** sparingly and `code` for paths/IDs. Markdown is converted for you."
+    "use **bold** sparingly and `code` for paths/IDs. Markdown is converted for you.\n\n"
+    f"Task tracking: the user's master open-task list is {TASKS_FILE}. Read it before "
+    "task-related requests. When a task is added, progressed or finished (including "
+    "\"add task …\" / \"close … task\" messages), update it in the file's format and "
+    "commit it in that git repo. The user can view it with /tasks."
 )
 
 SEND_FILE_RE = re.compile(r"^SEND_FILE:\s*(.+)$", re.MULTILINE)
@@ -194,6 +202,17 @@ async def new_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text("🔄 New conversation started with a summary of the previous one.")
 
 
+async def tasks_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_authorized(update):
+        return
+    await send_formatted(update.message, format_tasks())
+
+
+async def weekly_review(context: ContextTypes.DEFAULT_TYPE):
+    send = functools.partial(context.bot.send_message, ALLOWED_USER_ID)
+    await send_with(send, format_tasks(weekly=True))
+
+
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update):
         return
@@ -221,6 +240,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/status — conversation size and age\n"
         "/new — fresh conversation, keeping a summary\n"
         "/reset — clear conversation history (no summary)\n"
+        "/tasks — open task list\n"
         "/help — show this message\n\n"
         "Any other message is sent directly to Claude Code."
     )
@@ -233,6 +253,9 @@ def main():
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("new", new_conversation))
     app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("tasks", tasks_cmd))
+    # Weekly task review: Sunday 09:00 Israel time (days: 0=Sunday)
+    app.job_queue.run_daily(weekly_review, datetime.time(9, 0, tzinfo=ZoneInfo("Asia/Jerusalem")), days=(0,))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     log.info("Bot started. Working dir: %s", WORKING_DIR)
     app.run_polling()
