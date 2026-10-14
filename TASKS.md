@@ -27,7 +27,7 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
 - [ ] [H2] Ack-button test results — waiting: external · added 2026-10-12
   - resent 10-13 to Yossi, Orly, Elior; you get a ✅ per press; then delete `test_notify_ack`
   - Yossi's app can't reach HA from outside (error on press); fix with his phone in hand
-- [ ] [H4] Find the iPhone causing HA bans — waiting: Ofir · added 2026-10-12
+- [ ] [H4] Fix the iPhone causing HA bans: likely Elior (app logged in as the deactivated user "elior"). Log out/in as "eliori" · waiting: Elior · added 2026-10-12
   - still failing 10-13 20:55 from cellular; likely Shaked or Idan (phones silent since 10-12)
   - fix: log out/in in the HA app; Yossi now connects OK
 - [ ] [H5] Remote-access restrictions — waiting: Ofir · added 2026-10-12
