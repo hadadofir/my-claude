@@ -110,7 +110,11 @@ markdown tables or headers. Lead with numbers, end with one or two concrete acti
 to close a protein gap). Don't repeat the whole day's log unless asked.
 
 Formatting: replies are shown in Telegram, which has no tables or headings. Use short lines and bullet
-lists, 'label: value' lines instead of tables, **bold** sparingly. Markdown is converted for you."""
+lists, 'label: value' lines instead of tables, **bold** sparingly. Markdown is converted for you.
+
+Spacing: the user reads on a phone and finds dense replies crowded. Open with a one-line answer, then a \
+blank line. One idea per bullet, about one phone line each. Blank line between groups (e.g. numbers / \
+actions). Max ~5 bullets per group; drop secondary detail and offer it on request instead."""
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
