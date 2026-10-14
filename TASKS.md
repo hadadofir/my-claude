@@ -20,6 +20,11 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
   - laptop → 192.168.0.108; CoolMaster MAC 28:3B:96:03:0A:E3 → 10.0.0.17
 - [ ] [S5] Second computer as server — waiting: Ofir · added 2026-10-13
   - Ofir sends specs (desktop/laptop, CPU, RAM, GPU, OS), then Claude writes the plan
+- [ ] [S6] Finish full-upgrade, reboot, verify — waiting: Ofir · added 2026-10-14
+  - fixes stuck NVIDIA driver; after reboot Claude checks nvidia-smi, bots, Wi-Fi errors
+- [ ] [S7] Upgrade Ubuntu to 26.04 LTS — waiting: Ofir · added 2026-10-14
+  - backups ready: `~/pre-upgrade-2026-10-14` + Drive copy
+  - run `sudo do-release-upgrade` at the laptop; then rebuild bot venvs
 
 ## Home Assistant
 - [ ] [H1] Check Shabbat flow first live run — waiting: Claude · added 2026-10-12
@@ -27,9 +32,9 @@ renumbered. Closed tasks move to **Done** (keeping their ID) with their close da
 - [ ] [H2] Ack-button test results — waiting: external · added 2026-10-12
   - resent 10-13 to Yossi, Orly, Elior; you get a ✅ per press; then delete `test_notify_ack`
   - Yossi's app can't reach HA from outside (error on press); fix with his phone in hand
-- [ ] [H4] Fix the iPhone causing HA bans: likely Elior (app logged in as the deactivated user "elior"). Log out/in as "eliori" · waiting: Elior · added 2026-10-12
-  - still failing 10-13 20:55 from cellular; likely Shaked or Idan (phones silent since 10-12)
-  - fix: log out/in in the HA app; Yossi now connects OK
+- [ ] [H4] Elior re-login to stop HA bans — waiting: external · added 2026-10-12
+  - her app uses the deactivated user `elior`; log out, log in as `eliori`
+  - then Claude deletes user `elior` (on Ofir's go)
 - [ ] [H5] Remote-access restrictions — waiting: Ofir · added 2026-10-12
   - after family trial; reminder fires 2026-11-08, then delete the reminder
 - [ ] [H6] Clean AC filters — waiting: Ofir · added 2026-10-12
